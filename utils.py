@@ -1,14 +1,15 @@
 import io
 import math
+
 import numpy as np
 
+# Définition des nucléotides
+nucleotide = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+nucleotide_indetermine = {'A': 0, 'C': 1, 'G': 2, 'T': 3, 'N': -1}
 
-#Définition des nucléotides
-nucleotide = {'A':0,'C':1,'G':2,'T':3}
-nucleotide_indetermine = {'A':0,'C':1,'G':2,'T':3,'N':-1}
 
 def decode_sequence(sequence):
-    inv_nucleotide = {v:k for k, v in nucleotide_indetermine.items()}
+    inv_nucleotide = {v: k for k, v in nucleotide_indetermine.items()}
     to_str = ""
     for i in sequence:
         if(i in inv_nucleotide):
@@ -16,7 +17,7 @@ def decode_sequence(sequence):
         else:
             to_str += 'N'
     return to_str
-    
+
 
 def encode_sequence(string):
     to_list = []
@@ -24,6 +25,7 @@ def encode_sequence(string):
         if(base in nucleotide_indetermine):
             to_list.append(nucleotide_indetermine[base])
     return to_list
+
 
 def read_fasta(fasta_filepath):
     fasta_file = io.open(fasta_filepath, 'r')
@@ -35,17 +37,20 @@ def read_fasta(fasta_filepath):
             sequences_dict[line] = []
         else:
             for nucl in line:
-                if(nucl in nucleobase_undetermine):
-                    sequences_dict[current_sequence].append(nucleotide_indetermine[nucl])
+                if(nucl in nucleotide_indetermine):
+                    sequences_dict[current_sequence].append(
+                        nucleotide_indetermine[nucl])
 
     return sequences_dict
-    
+
+
 def nucleotide_count(sequence):
     count = [0 for k in nucleotide]
     for nucl in sequence:
         if(nucl >= 0):
             count[nucl] += 1
     return count
+
 
 def nucleotide_frequency(sequence):
     count = [0 for k in nucleotide]
@@ -54,4 +59,4 @@ def nucleotide_frequency(sequence):
         if(nucl >= 0):
             count[nucl] += 1
             n_nucl += 1.
-    return count/(np.sum(count))
+    return count / (np.sum(count))
