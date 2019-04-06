@@ -1,10 +1,12 @@
 from functools import reduce
+from itertools import product
 
 import numpy as np
 
 import utils as ut
 
 inv_nucleotide = {v: k for k, v in ut.nucleotide.items()}
+nucleobases = [k for k in inv_nucleotide]
 
 
 def logproba(sequence, probas):
@@ -150,7 +152,7 @@ def inv_code(index, k):
     return int_to_str(sequence)
 
 
-def n_grams(sequence, k):
+def n_grams_occurrences(sequence, k):
     """Counts the number of occurrences of `k`-grams in a sequence.
 
     Parameters
@@ -173,3 +175,73 @@ def n_grams(sequence, k):
         except Exception:
             counts[sequence[i:i + k]] = 1
     return counts
+
+
+def all_n_grams(k, alph=nucleobases):
+    return list(product(alph, repeat=k))
+
+
+def comptage_attendu(k, length, frequences):
+    n_grams = all_n_grams(k)
+    number_n_grams = length - k + 1
+    dico = {}
+    for n_g in n_grams:
+        dico[n_g] = reduce(lambda x, y: x * y, [frequences[i] for i in n_g],
+                           number_n_grams)
+    return dico
+
+
+def simule_sequence(length, prop):
+    liste = [np.full((round(length * p)), k) for k, p in enumerate(prop)]
+    flattened = np.hstack(liste)
+    return np.random.permutation(flattened)
+
+
+def distance_counts(expected, observed):
+    return np.linalg.norm([expected[k] - observed[k] for k in nucleotide])
+
+
+def compare_simualtions(length, freqs, num_seq=1000):
+    # obs_count = np.array([])
+    pass
+
+
+def count_bigram(sequence, first, second):
+    count = 0
+    cmp = False
+    for char in sequence:
+        if cmp is True:
+            cmp = False
+            if char == second:
+                count += 1
+        if char == first:
+            cmp = True
+    return count
+
+
+def transition_matrix(sequence):
+    matrix = np.array([[count_bigram(sequence, fst, snd) for snd in nucleobases]
+                       for fst in nucleobases])
+    return matrix / matrix.sum(axis=1).reshape(-1, 1)
+
+
+def simule_sequence_markov(length, prop, sequence):
+    matrix = transition_matrix(sequence)
+    seq = []
+    proba = prop
+    for _ in range(length):
+        nb = np.random.choice(nucleobases, p=proba)
+        proba = matrix[nb]
+        seq.append(nb)
+    return seq
+
+
+def markov_proba(sequence, matrix, pi_k):
+    def tmp(p, n):
+        return p[0] * matrix[p[1]][n], n
+    first_nb = sequence[0]
+    initial_proba = pi_k[first_nb]
+    return reduce(tmp, sequence[1:], (initial_proba, first_nb))[0]
+
+def comptage_attendu_markov(k, length, frequences):
+    pass
