@@ -4,7 +4,7 @@ from itertools import product
 import numpy as np
 
 import utils as ut
-
+from operator import mul
 inv_nucleotide = {v: k for k, v in ut.nucleotide.items()}
 nucleobases = [k for k in inv_nucleotide]
 
@@ -106,7 +106,7 @@ def int_to_str(sequence):
     return ''.join([inv_nucleotide[int(n)] for n in sequence])
 
 
-def inv_code(index, k):
+def inv_code(index, length):
     """Determines a DNA sequence based on the alphabetical order of its
     nucleotides.
 
@@ -114,7 +114,7 @@ def inv_code(index, k):
     ----------
     index : int
         The alphabetical index of a DNA sequence.
-    k : int
+    length : int
         The size of a DNA sequence.
 
     Returns
@@ -148,19 +148,19 @@ def inv_code(index, k):
         return p[0] + str(p[1] // n), p[1] % n
 
     sequence, _ = reduce(
-        expand, [4**i for i in range(k - 1, -1, -1)], ('', index))
+        expand, [4**i for i in range(length - 1, -1, -1)], ('', index))
     return int_to_str(sequence)
 
 
-def n_grams_occurrences(sequence, k):
+def k_grams_occurrences(sequence, k):
     """Counts the number of occurrences of `k`-grams in a sequence.
 
     Parameters
     ----------
     sequence : str
-        The DNA sequence to be analised.
+        The DNA sequence to be analysed.
     k : int
-        The size of the n-grams to be considered.
+        The size of the k-grams to be considered.
 
     Returns
     -------
@@ -169,20 +169,53 @@ def n_grams_occurrences(sequence, k):
 
     """
     counts = {}
-    for i in range(len(sequence) - k + 1):
+    for i in range(len(sequence)-k+1):
         try:
-            counts[sequence[i:i + k]] += 1
+            counts[tuple(sequence[i:i + k])] += 1
         except Exception:
-            counts[sequence[i:i + k]] = 1
-    return counts
+            counts[tuple(sequence[i:i + k])] = 1
+    key = lambda item: item[0]
+    sorted_dict = {k: v for k,v in sorted(counts.items(), key=key)}
+    return sorted_dict
 
 
-def all_n_grams(k, alph=nucleobases):
+def all_k_grams(k, alph=nucleobases):
+    """Returns all k-grams given the alphabet
+
+    Parameters
+    ----------
+    k : int
+        The size of the k-grams to be considered.
+    alph : str
+        The alphabet.
+
+    Returns
+    -------
+    list of str
+        all possible k-grams given the alphabet.
+
+    """
     return list(product(alph, repeat=k))
 
 
 def comptage_attendu(k, length, frequences):
-    n_grams = all_n_grams(k)
+    """Returns the expected number of occurrences of the different k-grams given the frequencies of letters in the DNA sequence
+
+    Parameters
+    ----------
+    k : int
+        The size of the k-grams to be considered.
+    length : int
+        The size of a DNA sequence.
+    frequences: list of int
+        The number of occurrences of the different elements of the sequence.
+    Returns
+    -------
+    dict of str: int
+        the expected number of occurrences of the different k-grams.
+
+    """
+    n_grams = all_k_grams(k)
     number_n_grams = length - k + 1
     dico = {}
     for n_g in n_grams:
@@ -192,21 +225,82 @@ def comptage_attendu(k, length, frequences):
 
 
 def simule_sequence(length, prop):
+    """Generates a random sequence of length lg given the proportions of A,C,G and T.
+
+    Parameters
+    ----------
+    prop : list of float
+        proportions of A,C,G and T.
+    length : int
+        The size of a DNA sequence.
+    Returns
+    -------
+    numpy.array
+        A random sequence of length lg
+    """
     liste = [np.full((round(length * p)), k) for k, p in enumerate(prop)]
     flattened = np.hstack(liste)
     return np.random.permutation(flattened)
 
 
 def distance_counts(expected, observed):
+    """Compute the distance between the expected number of occurrences and the observed one.
+
+    Parameters
+    ----------
+    expected : numpy.array
+        the expected number of occurrences of the different elements of the sequence.
+    observed : numpy.array
+        the expected number of occurrences of the different elements of the sequence.
+    Returns
+    -------
+        float
+            the norm of the array (expected - observed).
+
+    """
     return np.linalg.norm([expected[k] - observed[k] for k in nucleotide])
 
 
 def compare_simualtions(length, freqs, num_seq=1000):
+    """
+    compare the expected number of occurrences and the observed one by simulating a given number of sequences.
+
+    Parameters
+    ----------
+    length : int
+        The size of a DNA sequence.
+    frequences : list of int
+        The number of occurrences of the different elements of the sequence.
+    num_seq : int
+        the number of sequences to simulate.
+
+    Returns
+    -------
+
+    """
+
     # obs_count = np.array([])
     pass
 
 
 def count_bigram(sequence, first, second):
+    """
+    counts the number of occurrences of a given bigram  in a sequence.
+
+    Parameters
+    ----------
+    sequence : str
+        The DNA sequence to be analysed.
+    first : char
+        the first letter of the bigram to be considered.
+    second : char
+        the second letter of the bigram to be considered.
+    Returns
+    -------
+    int
+        the number of occurrences of the bigram.
+
+    """
     count = 0
     cmp = False
     for char in sequence:
@@ -220,12 +314,41 @@ def count_bigram(sequence, first, second):
 
 
 def transition_matrix(sequence):
+    """
+    Compute the transition matrix of the markov chain model of the frequencies of overlapping dinucleotides.
+
+    Parameters
+    ----------
+    sequence : str
+        The DNA sequence to be analysed.
+
+    Returns
+    -------
+    numpy.ndarray
+        the transition matrix.
+
+    """
     matrix = np.array([[count_bigram(sequence, fst, snd) for snd in nucleobases]
                        for fst in nucleobases])
     return matrix / matrix.sum(axis=1).reshape(-1, 1)
 
 
 def simule_sequence_markov(length, prop, sequence):
+    """
+    simulates a sequence with the dinucleotide model.
+
+    Parameters
+    ----------
+    sequence : str
+        The DNA sequence to be analysed.
+    length : int
+        the length of the sequence to be simulated.
+    prop : list of float
+        the proportions of the different elements of the sequence.
+    Returns
+    -------
+        the simulated sequence. 
+    """
     matrix = transition_matrix(sequence)
     seq = []
     proba = prop
@@ -237,11 +360,35 @@ def simule_sequence_markov(length, prop, sequence):
 
 
 def markov_proba(sequence, matrix, pi_k):
+    """
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
     def tmp(p, n):
         return p[0] * matrix[p[1]][n], n
     first_nb = sequence[0]
     initial_proba = pi_k[first_nb]
     return reduce(tmp, sequence[1:], (initial_proba, first_nb))[0]
 
+
+def markov_proba_v2(word, position, probas, matrix):
+    p = np.dot(probas,np.linalg.matrix_power(matrix,position))[word[0]]
+    return reduce(mul, matrix[word[0]], 1) * p
+
+
 def comptage_attendu_markov(k, length, frequences):
+    """
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
     pass
