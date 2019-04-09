@@ -238,7 +238,7 @@ def simule_sequence(length, prop):
     numpy.array
         A random sequence of length lg
     """
-    liste = [np.full((round(length * p)), k) for k, p in enumerate(prop)]
+    liste = [np.full((int(round(length * p))), k) for k, p in enumerate(prop)]
     flattened = np.hstack(liste)
     return np.random.permutation(flattened)
 
@@ -281,7 +281,41 @@ def compare_simualtions(length, freqs, num_seq=1000):
 
     # obs_count = np.array([])
     pass
+def p_empirique(length, n, word, freqs, nb_simulation=1000):
+    """
+    Parameters
+    ----------
 
+    Returns
+    -------
+
+    """
+    nb_observed = 0
+    for _ in range(nb_simulation):
+        dict = k_grams_occurrences(simule_sequence(length,freqs),len(word))
+        if(word in dict.keys() and dict[word] >= n ): nb_observed +=1
+    return nb_observed
+
+def plot_histogram(sequence,freqs, n, nb_simulation=1000):
+    """
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    words = ["ATCTGC","ATATAT","TTTAAA","AAAAA"]
+    occ_observed = [p_empirique(len(sequence),n,word,freqs,nb_simulation) for word in words]
+    fig, ax = plt.subplots()
+    ax.bar(words,occ_observed,align = "center")
+    ax.set_xticks(words)
+    ax.set_xtickslabels(words)
+    ax.set_ylabel('Probabilité empirique')
+    ax.set_xlabel('mot')
+    ax.set_title("Calcule des probas empirique pour n= "+str(n))
+    return occ_observed
 
 def count_bigram(sequence, first, second):
     """
@@ -347,7 +381,7 @@ def simule_sequence_markov(length, prop, sequence):
         the proportions of the different elements of the sequence.
     Returns
     -------
-        the simulated sequence. 
+        the simulated sequence.
     """
     matrix = transition_matrix(sequence)
     seq = []
@@ -376,9 +410,9 @@ def markov_proba(sequence, matrix, pi_k):
     return reduce(tmp, sequence[1:], (initial_proba, first_nb))[0]
 
 
-def markov_proba_v2(word, position, probas, matrix):
+"""def markov_proba_v2(word, position, probas, matrix):
     p = np.dot(probas,np.linalg.matrix_power(matrix,position))[word[0]]
-    return reduce(mul, matrix[word[0]], 1) * p
+    return reduce(mul, matrix[word[0]], 1) * p"""
 
 
 def comptage_attendu_markov(k, length, frequences):
