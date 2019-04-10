@@ -2,6 +2,7 @@ from functools import reduce
 from itertools import product
 
 import numpy as np
+import pandas as pd
 
 import utils as ut
 from operator import mul
@@ -174,8 +175,8 @@ def k_grams_occurrences(sequence, k):
             counts[tuple(sequence[i:i + k])] += 1
         except Exception:
             counts[tuple(sequence[i:i + k])] = 1
-    key = lambda item: item[0]
-    sorted_dict = {k: v for k,v in sorted(counts.items(), key=key)}
+    # key = lambda item: item[0]
+    sorted_dict = {k: v for k, v in sorted(counts.items())}
     return sorted_dict
 
 
@@ -224,12 +225,12 @@ def comptage_attendu(k, length, frequences):
     return dico
 
 
-def simule_sequence(length, prop):
+def simule_sequence(length, props):
     """Generates a random sequence of length lg given the proportions of A,C,G and T.
 
     Parameters
     ----------
-    prop : list of float
+    props : list of float
         proportions of A,C,G and T.
     length : int
         The size of a DNA sequence.
@@ -238,7 +239,7 @@ def simule_sequence(length, prop):
     numpy.array
         A random sequence of length lg
     """
-    liste = [np.full((int(round(length * p))), k) for k, p in enumerate(prop)]
+    liste = [np.full((int(round(length * p))), k) for k, p in enumerate(props)]
     flattened = np.hstack(liste)
     return np.random.permutation(flattened)
 
@@ -254,14 +255,21 @@ def distance_counts(expected, observed):
         the expected number of occurrences of the different elements of the sequence.
     Returns
     -------
-        float
-            the norm of the array (expected - observed).
+    float
+        the norm of the array (expected - observed).
 
     """
-    return np.linalg.norm([expected[k] - observed[k] for k in nucleotide])
+    dists = []
+    for k, exp in expected.items():
+        try:
+            obs = observed[k]
+        except Exception:
+            obs = 0.
+        dists.append(exp - obs)
+    return np.linalg.norm(dists)
 
 
-def compare_simualtions(length, freqs, num_seq=1000):
+def compare_simulations(length, freqs, ks, num_seq=1000):
     """
     compare the expected number of occurrences and the observed one by simulating a given number of sequences.
 
@@ -271,6 +279,8 @@ def compare_simualtions(length, freqs, num_seq=1000):
         The size of a DNA sequence.
     frequences : list of int
         The number of occurrences of the different elements of the sequence.
+    ks : list of int
+        The lengths of the n-grams to be considered.
     num_seq : int
         the number of sequences to simulate.
 
@@ -279,8 +289,17 @@ def compare_simualtions(length, freqs, num_seq=1000):
 
     """
 
-    # obs_count = np.array([])
-    pass
+    distances = {k: np.zeros(num_seq, dtype=np.float) for k in ks}
+    for i in range(num_seq):
+        sequence = simule_sequence(length, freqs)
+        for k in ks:
+            observed = k_grams_occurrences(sequence, k)
+            expected = comptage_attendu(k, length, freqs)
+            distances[k][i] = distance_counts(expected, observed)
+    df = pd.DataFrame(distances)
+    return df
+
+
 def p_empirique(length, n, word, freqs, nb_simulation=1000):
     """
     Parameters
