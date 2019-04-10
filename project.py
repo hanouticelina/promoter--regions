@@ -381,9 +381,9 @@ def transition_matrix(sequence):
         the transition matrix.
 
     """
-    matrix = np.array([[count_bigram(sequence, fst, snd) for snd in nucleobases]
+    tmatrix = np.array([[count_bigram(sequence, fst, snd) for snd in nucleobases]
                        for fst in nucleobases])
-    return matrix / matrix.sum(axis=1).reshape(-1, 1)
+    return tmatrix / tmatrix.sum(axis=1).reshape(-1, 1)
 
 
 def simule_sequence_markov(length, prop, sequence):
@@ -402,17 +402,17 @@ def simule_sequence_markov(length, prop, sequence):
     -------
         the simulated sequence.
     """
-    matrix = transition_matrix(sequence)
+    tmatrix = transition_matrix(sequence)
     seq = []
     proba = prop
     for _ in range(length):
         nb = np.random.choice(nucleobases, p=proba)
-        proba = matrix[nb]
+        proba = tmatrix[nb]
         seq.append(nb)
     return seq
 
 
-def markov_proba(sequence, matrix, pi_k):
+def markov_proba(sequence, tmatrix, pi_k):
     """
 
     Parameters
@@ -423,7 +423,7 @@ def markov_proba(sequence, matrix, pi_k):
 
     """
     def tmp(p, n):
-        return p[0] * matrix[p[1]][n], n
+        return p[0] * tmatrix[p[1]][n], n
     first_nb = sequence[0]
     initial_proba = pi_k[first_nb]
     return reduce(tmp, sequence[1:], (initial_proba, first_nb))[0]
@@ -434,7 +434,43 @@ def markov_proba(sequence, matrix, pi_k):
     return reduce(mul, matrix[word[0]], 1) * p"""
 
 
-def comptage_attendu_markov(k, length, frequences):
+def comptage_attendu_markov(k, length, tmatrix, pi):
+    """
+
+    Parameters
+    ----------
+    pi: tuple of int
+        The distribution to use for the first nucleobase in the `k`-gram.
+
+    Returns
+    -------
+
+    See Also
+    --------
+    stationary_distribution
+
+    """
+    n_grams = all_k_grams(k)
+    number_n_grams = length - k + 1
+    dico = {}
+    for n_g in n_grams:
+        dico[n_g] = number_n_grams * markov_proba(n_g, tmatrix, pi)
+    return dico
+
+def stationary_distribution(pi_0, tmatrix, epsilon):
+    """
+    """
+    pi_k = pi_0
+    k = 0
+    while True:
+        k += 1
+        pi_kp1 = np.dot(pi_k, tmatrix)
+        if np.abs(pi_kp1 - pi_k).sum() < epsilon:
+            print("Convergence after", k, "iterations")
+            return pi_kp1
+        pi_k = pi_kp1
+
+def comptage_attendu_markov_stationnaire(k, length, frequences, stat_distro):
     """
 
     Parameters
@@ -444,4 +480,24 @@ def comptage_attendu_markov(k, length, frequences):
     -------
 
     """
-    pass
+    n_grams = all_k_grams(k)
+    number_n_grams = length - k + 1
+    dico = {}
+    for n_g in n_grams:
+        dico[n_g] = number_n_grams * stat_distro[n_g[0]]
+    return dico
+
+def p_empirique_dinucleotides(length, n, counts, k, word, freqs, nb_simulation=1000):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    nb_observed = 0
+    for _ in range(nb_simulation):
+        dict = k_grams_occurrences(simule_sequence(length,freqs),len(word))
+        if(word in dict.keys() and dict[word] >= n ): nb_observed +=1
+    return nb_observed
