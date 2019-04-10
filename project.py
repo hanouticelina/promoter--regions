@@ -3,13 +3,14 @@ from itertools import product
 
 import numpy as np
 import pandas as pd
-
+import matplotlib.pyplot as plt
 import utils as ut
 from operator import mul
 inv_nucleotide = {v: k for k, v in ut.nucleotide.items()}
 nucleobases = [k for k in inv_nucleotide]
 
-
+d={'k':1,'f':2, 'j':4,'g':9}
+len(d)
 def logproba(sequence, probas):
     """Returns the log-probability of an integer sequence.
 
@@ -169,12 +170,14 @@ def k_grams_occurrences(sequence, k):
         The number of occurrences of the different `k`-grams in the sequence.
 
     """
-    counts = {}
+    k_grams = all_k_grams(k)
+    counts = {tuple(k) : 0 for k in k_grams}
     for i in range(len(sequence)-k+1):
         try:
             counts[tuple(sequence[i:i + k])] += 1
         except Exception:
-            counts[tuple(sequence[i:i + k])] = 1
+            counts[tuple(sequence[i:i + k])] = 0
+            del counts[tuple(sequence[i:i + k])]
     # key = lambda item: item[0]
     sorted_dict = {k: v for k, v in sorted(counts.items())}
     return sorted_dict
@@ -289,18 +292,20 @@ def compare_simulations(length, freqs, ks, num_seq=1000):
 
     """
 
-    distances = {k: np.zeros(num_seq, dtype=np.float) for k in ks}
-    for i in range(num_seq):
-        sequence = simule_sequence(length, freqs)
-        for k in ks:
-            observed = k_grams_occurrences(sequence, k)
-            expected = comptage_attendu(k, length, freqs)
-            distances[k][i] = distance_counts(expected, observed)
-    df = pd.DataFrame(distances)
-    return df
+    observed = {k: None for k in ks}
+    expected = {k: None for k in ks}
+    for k in ks:
+        exp = np.zeros((num_seq,len(comptage_attendu(k,length,freqs))))
+        obs = np.zeros_like(exp)
+        for i in range(num_seq):
+            sequence = simule_sequence(length, freqs)
+            obs[i] = list(k_grams_occurrences(sequence,k).values())
+            exp[i] = list(comptage_attendu(k,len(sequence),freqs).values())
+        observed[k] = list(np.mean(obs, axis = 0))
+        expected[k] = list(np.mean(exp, axis = 0))
+    return observed, expected
 
-
-def p_empirique(length, n, word, freqs, nb_simulation=1000):
+def p_empirique(length, word, freqs, nb_simulation=1000):
     """
     Parameters
     ----------
@@ -309,13 +314,20 @@ def p_empirique(length, n, word, freqs, nb_simulation=1000):
     -------
 
     """
-    nb_observed = 0
+    nb_observed ={}
+    word_ = tuple(str_to_int(word))
     for _ in range(nb_simulation):
-        dict = k_grams_occurrences(simule_sequence(length,freqs),len(word))
-        if(word in dict.keys() and dict[word] >= n ): nb_observed +=1
-    return nb_observed
+        dict = k_grams_occurrences(simule_sequence(length,freqs),len(word_))
+        nb = 0
+        if(word_ in dict.keys()):
+             nb = dict[word_]
+        if nb in nb_observed:
+            nb_observed[nb] +=1
+        else:
+            nb_observed[nb] = 1
+    return {nb : nb_observed[nb]/nb_simulation for nb in nb_observed.keys()}
 
-def plot_histogram(sequence,freqs, n, nb_simulation=1000):
+def plot_histogram(sequence,freqs, nb_simulation=1000):
     """
 
     Parameters
@@ -325,16 +337,21 @@ def plot_histogram(sequence,freqs, n, nb_simulation=1000):
     -------
 
     """
-    words = ["ATCTGC","ATATAT","TTTAAA","AAAAA"]
-    occ_observed = [p_empirique(len(sequence),n,word,freqs,nb_simulation) for word in words]
-    fig, ax = plt.subplots()
-    ax.bar(words,occ_observed,align = "center")
-    ax.set_xticks(words)
-    ax.set_xtickslabels(words)
-    ax.set_ylabel('Probabilité empirique')
-    ax.set_xlabel('mot')
-    ax.set_title("Calcule des probas empirique pour n= "+str(n))
-    return occ_observed
+    p_emp = {}
+    words = ["ATCTGC", "ATATAT", "TTTAAA", "AAAAAA"]
+    for word in words:
+        p_emp[word] = p_empirique(len(sequence),word,freqs,nb_simulation)
+    for word in p_emp.keys():
+        fig, ax = plt.subplots(figsize=(7, 7))
+        keys = np.array([x for x in p_emp[word].keys()])
+        values = np.array([x for x in p_emp[word].values()])
+        """TODO: confidence intervals"""
+        ax.bar(keys, values)
+        ax.grid(True)
+        ax.set_title("Histogramme des occurrences de "+word)
+        ax.set_xlabel("Occurrences du mot")
+        ax.set_ylabel("Probabilité empirique estimée")
+        fig.savefig("plots/histogram_"+word+".png")
 
 def count_bigram(sequence, first, second):
     """
