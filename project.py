@@ -338,7 +338,7 @@ def plot_histogram(sequence,freqs, nb_simulation=1000):
 
     """
     p_emp = {}
-    words = ["ATCTGC", "ATATAT", "TTTAAA", "AAAAAA"]
+    words = ["ATCTGC", "ATATAT", "AAAAAA", "TTTAAA"]
     positions = [(0,0), (0,1), (1,0), (1,1)]
     for word in words:
         p_emp[word] = p_empirique(len(sequence), word, freqs, nb_simulation)
