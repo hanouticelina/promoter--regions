@@ -339,19 +339,21 @@ def plot_histogram(sequence,freqs, nb_simulation=1000):
     """
     p_emp = {}
     words = ["ATCTGC", "ATATAT", "TTTAAA", "AAAAAA"]
+    positions = [(0,0), (0,1), (1,0), (1,1)]
     for word in words:
-        p_emp[word] = p_empirique(len(sequence),word,freqs,nb_simulation)
-    for word in p_emp.keys():
-        fig, ax = plt.subplots(figsize=(7, 7))
+        p_emp[word] = p_empirique(len(sequence), word, freqs, nb_simulation)
+    fig, axes = plt.subplots(2, 2, figsize=(15, 15))
+    for pos, word in zip(positions, p_emp.keys()):
         keys = np.array([x for x in p_emp[word].keys()])
         values = np.array([x for x in p_emp[word].values()])
         """TODO: confidence intervals"""
-        ax.bar(keys, values)
-        ax.grid(True)
-        ax.set_title("Histogramme des occurrences de "+word)
-        ax.set_xlabel("Occurrences du mot")
-        ax.set_ylabel("Probabilité empirique estimée")
-        fig.savefig("plots/histogram_"+word+".png")
+        axes[pos].bar(keys, values)
+        axes[pos].grid(True)
+        axes[pos].set_title("Distribution des occurrences de " + word)
+        axes[pos].set_xlabel("Occurrences du mot")
+        axes[pos].set_ylabel("Probabilité empirique estimée")
+        extent = axes[pos].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        fig.savefig("plots/histogram_" + word + ".png", bbox_inches=extent.expanded(1.1, 1.2))
 
 def count_bigram(sequence, first, second):
     """

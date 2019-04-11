@@ -80,15 +80,16 @@ def plot(file,k,observed,expected):
     ax.scatter(expected, observed, c="blue", marker="o")
     ax.plot([min_v, max_v], [min_v, max_v], color="red", zorder=2)
     ax.set_title("Graphique 2D representant l'ecart entre le comptage attendu et le comtage observé sur le fichier: "+file[10:]+"et pour k = "+str(k))
-    
+
 def encode_file(sequence, k, probas, obs, exp):
     observed = [obs[k] for k in obs.keys()]
     expected = [exp[k] for k in exp.keys()]
     return observed, expected
+
 def read_file(file):
-    cerevisae = read_fasta(file)
-    chromos = [seq for seq in cerevisae.values()]
+    genome = read_fasta(file)
+    chromos = [seq for seq in genome.values()]
     chromos_flattened = [el for sub in chromos for el in sub]
-    freqs = nucleotide_count(chromos_flattened)
-    probas = nucleotide_frequency(chromos_flattened)
-    return cerevisae,chromos_flattened,freqs,probas
+    counts = nucleotide_count(chromos_flattened)
+    freqs = nucleotide_frequency(chromos_flattened)
+    return genome, chromos_flattened, counts, freqs
