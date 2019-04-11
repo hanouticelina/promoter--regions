@@ -67,23 +67,24 @@ def nucleotide_frequency(sequence):
             n_nucl += 1.
     return count / (np.sum(count))
 
-def plot(file,k):
-    f = read_fasta(file)
-    _,chromos_flattened, _ , probas = read_file(file)
-    observed = project.k_grams_occurrences(chromos_flattened,k)
-    expected = project.comptage_attendu(k,len(chromos_flattened),probas)
-    expected_values = [expected[key]  for key in expected.keys() if key in observed.keys()]
-    observed_values = [observed[key]  for key in expected.keys() if key in observed.keys()]
-    fig, ax = plt.subplots(figsize=(20, 10))
+def plot(file,k,observed,expected):
+    min_v = float("inf")
+    max_v = -float("inf")
+    fig, ax = plt.subplots(figsize=(7, 7))
+    ax.set_axisbelow(True)
     ax.grid(True)
     plt.xlabel("Nombre attendu")
     plt.ylabel("Nombre observe")
-    ax.scatter(expected_values, observed_values, c="blue", marker="o")
-    x = np.linspace(np.min([ax.get_xlim(), ax.get_ylim()]), np.max([ax.get_xlim(), ax.get_ylim()]))
-    ax.plot(x,x, color="red")
-    ax.set_title("Graphique 2D representant l'ecart entre le comptage attendu et le comtage observé sur le fichier: "+file[10:])
-    fig.savefig("plots/"+file[10:]+"_"+str(k)+".png")
-
+    min_v = min(min(expected), min(observed), min_v)
+    max_v = max(max(expected), max(observed), max_v)
+    ax.scatter(expected, observed, c="blue", marker="o")
+    ax.plot([min_v, max_v], [min_v, max_v], color="red", zorder=2)
+    ax.set_title("Graphique 2D representant l'ecart entre le comptage attendu et le comtage observé sur le fichier: "+file[10:]+"et pour k = "+str(k))
+    
+def encode_file(sequence, k, probas, obs, exp):
+    observed = [obs[k] for k in obs.keys()]
+    expected = [exp[k] for k in exp.keys()]
+    return observed, expected
 def read_file(file):
     cerevisae = read_fasta(file)
     chromos = [seq for seq in cerevisae.values()]
