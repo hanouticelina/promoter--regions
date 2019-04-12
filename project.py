@@ -1,6 +1,7 @@
 from functools import reduce
 from itertools import product
 import math
+from scipy.stats import poisson
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -314,6 +315,7 @@ def p_empirique(length, word, freqs, nb_simulation=1000):
     -------
 
     """
+
     nb_observed ={}
     word_ = tuple(str_to_int(word))
     for _ in range(nb_simulation):
@@ -325,7 +327,11 @@ def p_empirique(length, word, freqs, nb_simulation=1000):
             nb_observed[nb] +=1
         else:
             nb_observed[nb] = 1
-    return {nb : nb_observed[nb]/nb_simulation for nb in nb_observed.keys()}
+    sorted_obs = {k: v for k, v in sorted(nb_observed.items())}
+
+    keys = list(sorted_obs.keys())
+    values = np.cumsum(list(sorted_obs.values()))
+    return (keys, 1-(values/nb_simulation))
 
 def plot_histogram(sequence,freqs, nb_simulation=1000):
     """
@@ -348,13 +354,15 @@ def plot_histogram(sequence,freqs, nb_simulation=1000):
         p[word] = markov_proba(str_to_int(word),transition_matrix(sequence),pik)
     fig, axes = plt.subplots(2, 2, figsize=(15, 15))
     for pos, word in zip(positions, p_emp.keys()):
-        max_ = max(p_emp[word].keys()) + 1
+        max_ = max(p_emp[word][0]) + 1
         k = np.arange(max_)
         l = p[word] * (len(sequence) - len(word) + 1)
-        keys = np.array([x for x in p_emp[word].keys()])
-        values = np.array([x for x in p_emp[word].values()])
-        poisson = [(l**i)/math.factorial(i)*np.exp(l) for i in k]
-        axes[pos].scatter(k,poisson, zorder=2)
+        keys = p_emp[word][0]
+        values = p_emp[word][1]
+        print(values)
+        print(keys)
+        poiss = 1 - poisson.cdf(k,l)
+        axes[pos].scatter(k,poiss, zorder = 2)
         axes[pos].bar(keys, values)
         axes[pos].grid(True)
         axes[pos].set_title("Distribution des occurrences de " + word)
