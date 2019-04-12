@@ -67,19 +67,18 @@ def nucleotide_frequency(sequence):
             n_nucl += 1.
     return count / (np.sum(count))
 
-def plot(file,k,observed,expected):
-    min_v = float("inf")
-    max_v = -float("inf")
-    fig, ax = plt.subplots(figsize=(7, 7))
+def plot(xs, ys, xlabel, ylabel, title, ax=None):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(7, 7))
     ax.set_axisbelow(True)
     ax.grid(True)
-    plt.xlabel("Nombre attendu")
-    plt.ylabel("Nombre observe")
-    min_v = min(min(expected), min(observed), min_v)
-    max_v = max(max(expected), max(observed), max_v)
-    ax.scatter(expected, observed, c="blue", marker="o")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    min_v = min(min(ys), min(xs))
+    max_v = max(max(ys), max(xs))
+    ax.scatter(ys, xs, c="blue", marker="o")
     ax.plot([min_v, max_v], [min_v, max_v], color="red", zorder=2)
-    ax.set_title("Graphique 2D representant l'ecart entre le comptage attendu et le comtage observé sur le fichier: "+file[10:]+"et pour k = "+str(k))
+    ax.set_title(title)
 
 def encode_file(sequence, k, probas, obs, exp):
     observed = [obs[k] for k in obs.keys()]
