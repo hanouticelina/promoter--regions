@@ -176,8 +176,7 @@ def k_grams_occurrences(sequence, k):
         try:
             counts[tuple(sequence[i:i + k])] += 1
         except Exception:
-            counts[tuple(sequence[i:i + k])] = 0
-            del counts[tuple(sequence[i:i + k])]
+            pass
     # key = lambda item: item[0]
     sorted_dict = {k: v for k, v in sorted(counts.items())}
     return sorted_dict
