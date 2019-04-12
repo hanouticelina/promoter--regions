@@ -344,7 +344,7 @@ def plot_histogram(sequence,freqs, nb_simulation=1000):
     pik = stationary_distribution(freqs, transition_matrix(sequence), 0.00001)
     for word in words:
         p_emp[word] = p_empirique(len(sequence), word, freqs, nb_simulation)
-        p[word] = markov_proba(word,transition_matrix(sequence),pik)
+        p[word] = markov_proba(str_to_int(word),transition_matrix(sequence),pik)
     fig, axes = plt.subplots(2, 2, figsize=(15, 15))
     for pos, word in zip(positions, p_emp.keys()):
         max_ = max(p_emp[word].keys()) + 1
