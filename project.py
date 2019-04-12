@@ -338,15 +338,22 @@ def plot_histogram(sequence,freqs, nb_simulation=1000):
 
     """
     p_emp = {}
-    words = ["ATCTGC", "ATATAT", "AAAAAA", "TTTAAA"]
+    p = {}
+    words = ["ATCTGC", "ATATAT", "TTTAAA", "AAAAAA"]
     positions = [(0,0), (0,1), (1,0), (1,1)]
+     # Paramètre de la loi de Poisson
+    pik = stationary_distribution(freqs, transition_matrix(sequence), 0.00001)
     for word in words:
         p_emp[word] = p_empirique(len(sequence), word, freqs, nb_simulation)
+        p[word] = markov_proba(word,transition_matrix(sequence),pik)
     fig, axes = plt.subplots(2, 2, figsize=(15, 15))
     for pos, word in zip(positions, p_emp.keys()):
+        max_ = max(p_emp[word].keys()) + 1
+        k = np.arange(max_)
+        l = p * (len(sequence) - len(word) + 1)
         keys = np.array([x for x in p_emp[word].keys()])
         values = np.array([x for x in p_emp[word].values()])
-        """TODO: confidence intervals"""
+        axes[pos].scatter(k,((l**k)/factorial(k))*np.exp(-l), zorder=2)
         axes[pos].bar(keys, values)
         axes[pos].grid(True)
         axes[pos].set_title("Distribution des occurrences de " + word)
