@@ -1,6 +1,7 @@
 from functools import reduce
 from itertools import product
 import math
+from scipy.stats import poisson
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -338,7 +339,7 @@ def plot_histogram(sequence,freqs, nb_simulation=1000):
     """
     p_emp = {}
     p = {}
-    words = ["ATCTGC", "ATATAT", "TTTAAA", "AAAAAA"]
+    words = ["ATCTGC", "ATATAT", "AAAAAA", "TTTAAA"]
     positions = [(0,0), (0,1), (1,0), (1,1)]
      # Paramètre de la loi de Poisson
     pik = stationary_distribution(freqs, transition_matrix(sequence), 0.00001)
@@ -352,7 +353,7 @@ def plot_histogram(sequence,freqs, nb_simulation=1000):
         l = p[word] * (len(sequence) - len(word) + 1)
         keys = np.array([x for x in p_emp[word].keys()])
         values = np.array([x for x in p_emp[word].values()])
-        poisson = [(l**i)/math.factorial(i)*np.exp(l) for i in k]
+        poisson = [(l**i)/(math.factorial(i)*np.exp(l)) for i in k]
         axes[pos].scatter(k,poisson, zorder=2)
         axes[pos].bar(keys, values)
         axes[pos].grid(True)
@@ -455,11 +456,6 @@ def markov_proba(sequence, tmatrix, pi_k):
     return reduce(tmp, sequence[1:], (initial_proba, first_nb))[0]
 
 
-"""def markov_proba_v2(word, position, probas, matrix):
-    p = np.dot(probas,np.linalg.matrix_power(matrix,position))[word[0]]
-    return reduce(mul, matrix[word[0]], 1) * p"""
-
-
 def comptage_attendu_markov(k, length, tmatrix, pi):
     """
 
@@ -496,23 +492,6 @@ def stationary_distribution(pi_0, tmatrix, epsilon):
             return pi_kp1
         pi_k = pi_kp1
 
-def comptage_attendu_markov_stationnaire(k, length, frequences, stat_distro):
-    """
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
-    """
-    n_grams = all_k_grams(k)
-    number_n_grams = length - k + 1
-    dico = {}
-    for n_g in n_grams:
-        dico[n_g] = number_n_grams * stat_distro[n_g[0]]
-    return dico
-
 def p_empirique_dinucleotides(length, n, counts, k, word, freqs, nb_simulation=1000):
     """
     Parameters
@@ -527,3 +506,11 @@ def p_empirique_dinucleotides(length, n, counts, k, word, freqs, nb_simulation=1
         dict = k_grams_occurrences(simule_sequence(length,freqs),len(word))
         if(word in dict.keys() and dict[word] >= n ): nb_observed +=1
     return nb_observed
+
+def geq_poisson_probability(n, mu):
+    return 1 - poisson.cdf(n, mu=mu)
+
+
+def gap_probabilities(length, k, counts, probas):
+    nb_pos = length - k + 1
+    return [geq_poisson_probability(n, nb_pos*p) for n, p in zip(counts, probas)]
