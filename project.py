@@ -600,14 +600,33 @@ def gap_probabilities(length, k, counts, probas):
     nb_pos = length - k + 1
     return [geq_poisson_probability(n, nb_pos*p) for n, p in zip(counts, probas)]
 
-def unexpected_words(sequence,freqs,k,seuil):
-    occ = k_grams_occurrences(sequence,k)
+def unexpected_words(sequence, freqs, k, seuil):
+    dico = k_grams_occurrences(sequence, k)
     nb_pos = len(sequence)- k + 1
-    pik = stationary_distribution(freqs, transition_matrix(sequence), 0.00001)
+    tmatrix = transition_matrix(sequence)
+    pi_k = stationary_distribution(freqs, tmatrix, 0.00001)
     words = []
-    for w in occ.keys():
-        p = dinucleotides_proba(w,transition_matrix(sequence),pik)
-        proba = geq_poisson_probability(occ[w],p*nb_pos)
+    for w, occ in dico.items():
+        p = dinucleotides_proba(w, tmatrix, pi_k)
+        proba = geq_poisson_probability(occ, p * nb_pos)
         if proba < seuil:
             words.append(int_to_str(w))
-            print("word: "+int_to_str(w)+"\t\tOccurrences: "+str(occ[w])+"\t\tP(N >= {:d}) = {:.4f}".format(occ[w], proba), sep="")
+            print("word: " + int_to_str(w) + "\t\tOccurrences: " + \
+            str(occ) + "\t\tP(N >= {:d}) = {:.4f}".format(occ, proba), sep="")
+
+def sort_unexpected_words(sequence, frequencies, ks, threshold):
+    tmatrix = transition_matrix(sequence)
+    pi_k = stationary_distribution(frequencies, tmatrix, 0.00001, verbose=False)
+    nt_proba = lambda word: nucleotides_proba(word, frequencies)
+    dint_proba = lambda word: dinucleotides_proba(word, tmatrix, pi_k)
+    nt_res, dint_res = [], []
+    for proba, res in zip([nt_proba, dint_proba], [nt_res, dint_res]):
+        for k in ks:
+            nb_pos = len(sequence) - k + 1
+            dico = k_grams_occurrences(sequence, k)
+            word_proba = [(w, geq_poisson_probability(o, proba(w)*nb_pos)) \
+                            for w, o in dico.items()]
+            word_proba.sort(key=lambda x: x[1])
+            words = [(int_to_str(w), p) for w, p in word_proba if p < threshold]
+            res.append(words)
+    return nt_res, dint_res
