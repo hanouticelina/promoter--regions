@@ -200,6 +200,20 @@ def all_k_grams(k, alph=nucleobases):
     return list(product(alph, repeat=k))
 
 def nucleotides_proba(sequence, frequencies):
+    """Returns the probability of occurrence of a word in a sequence based on the nucleotide model.
+
+    Parameters
+    ----------
+    sequence : str
+        The word to be considered.
+    frequences: list of float
+        The proportion of the different elements of the sequence.
+    Returns
+    -------
+    float
+        The probability of occurrence of the word.
+
+    """
     return reduce(lambda x, y: x * y, [frequencies[nb] for nb in sequence])
 
 def comptage_attendu(k, length, frequences):
@@ -211,8 +225,8 @@ def comptage_attendu(k, length, frequences):
         The size of the k-grams to be considered.
     length : int
         The size of a DNA sequence.
-    frequences: list of int
-        The number of occurrences of the different elements of the sequence.
+    frequences: list of float
+        The proportion of the different elements of the sequence.
     Returns
     -------
     dict of str: int
@@ -239,7 +253,7 @@ def simule_sequence(length, props):
     Returns
     -------
     numpy.array
-        A random sequence of length lg
+        A random sequence.
     """
     liste = [np.full((int(round(length * p))), k) for k, p in enumerate(props)]
     flattened = np.hstack(liste)
@@ -254,8 +268,8 @@ def compare_simulations(length, freqs, ks, num_seq=1000):
     ----------
     length : int
         The size of a DNA sequence.
-    frequences : list of int
-        The number of occurrences of the different elements of the sequence.
+    freqs : list of float
+        The proportion of each element of the sequence.
     ks : list of int
         The lengths of the n-grams to be considered.
     num_seq : int
@@ -263,7 +277,6 @@ def compare_simulations(length, freqs, ks, num_seq=1000):
 
     Returns
     -------
-
     """
 
     observed = {k: None for k in ks}
@@ -281,11 +294,19 @@ def compare_simulations(length, freqs, ks, num_seq=1000):
 
 def p_empirique(length, n_gram, freqs, nb_simulation=1000):
     """
+    Estimates the empirical probability of a word.
     Parameters
     ----------
-
+    length : int
+        The size of the DNA sequences to simulate.
+    freqs : list of float
+        The proportion of each element of the DNA sequences.
+    nb_simulation: int
+        the number of sequences to simulate.
     Returns
     -------
+    float
+        the empirical probability of the word.
 
     """
 
@@ -309,14 +330,23 @@ def p_empirique(length, n_gram, freqs, nb_simulation=1000):
     values = np.cumsum(values[::-1])[::-1] / nb_simulation
     return values
 
-def plot_histogram(sequence, freqs, nb_simulation=1000, expected=False):
+def plot_histogram(sequence, freqs, nb_simulation=1000, estimate=False):
     """
+    Plots the word count distribution histogram of each word in a given sequence.
 
     Parameters
     ----------
+    sequence : str
+        The DNA sequence to be considered.
+    freqs : list of float
+        The proportion of each element of the DNA sequence.
+    nb_simulation: int
+        the number of sequences to simulate.
 
     Returns
     -------
+    matplotlib.pyplot.plot
+        the word count distribution histogram.
 
     """
     fig, axes = plt.subplots(2, 2, figsize=(15, 15))
@@ -356,6 +386,20 @@ def plot_histogram(sequence, freqs, nb_simulation=1000, expected=False):
         fig.savefig("plots/histogram_" + word + ".png", bbox_inches=extent.expanded(1.1, 1.2))
 
 def plot_scatter(files, ks):
+    """
+    A scatter plot of the expected number of occurrences and the observed ones for the different 'k'-grams.
+    Parameters
+    ----------
+    files : list of str
+        list of the relative paths of the files that contain the DNA sequences.
+    ks : list of int
+        list of 'k' values to be considered.
+
+    Returns
+    -------
+    matplotlib.pyplot.plot
+            A scatter plot
+    """
     chromos_list = []
     fig, axes = plt.subplots(len(ks), len(files), figsize=(15, 15))
     plt.subplots_adjust(hspace=0.45, wspace=0.35)
@@ -395,12 +439,19 @@ def distance_counts(xs, ys):
 
 def plot_counts(sequence, freqs):
     """
+    Compares between the expected number of occurrences based on the nucleotide model and the one based on the dinucleotide model.
 
     Parameters
     ----------
+    sequence : str
+        The DNA sequence to be analysed.
+    freqs: list of float
+        The proportion of the different elements of the sequence.
 
     Returns
     -------
+    matplotlib.pyplot.plot
+        A Comparaison between the nucleotide model and the dinucleotide model.
 
     """
     fig, axes = plt.subplots(2, 2, figsize=(15, 15))
@@ -511,6 +562,7 @@ def simule_sequence_markov(length, prop, sequence):
         the proportions of the different elements of the sequence.
     Returns
     -------
+    list of int
         the simulated sequence.
     """
     tmatrix = transition_matrix(sequence)
@@ -525,12 +577,20 @@ def simule_sequence_markov(length, prop, sequence):
 
 def dinucleotides_proba(sequence, tmatrix, pi_k):
     """
+    Returns the probability of occurrence of a word at a given position with the dinucleotide model.
 
     Parameters
     ----------
+    sequence : str
+        The word to be considered.
+    tmatrix: numpy.ndarray
+        The transition matrix.
+    pi_k: numpy.array
+        The probability distribution at position `k`.
 
     Returns
     -------
+        the probability of occurrence of the word.
 
     """
     def tmp(p, n):
@@ -542,14 +602,23 @@ def dinucleotides_proba(sequence, tmatrix, pi_k):
 
 def comptage_attendu_markov(k, length, tmatrix, pi):
     """
+    Returns the expected number of occurrences based on the dinucleotide model.
 
     Parameters
     ----------
     pi: tuple of int
         The distribution to use for the first nucleobase in the `k`-gram.
+    k : int
+        The length of the k-grams to be considered.
+    tmatrix: numpy.ndarray
+        The transition matrix.
+    pi : numpy.array
+        The initial distribution.
 
     Returns
     -------
+    dict of tuple of int : float
+        The expected number of occurrences.
 
     See Also
     --------
@@ -565,6 +634,21 @@ def comptage_attendu_markov(k, length, tmatrix, pi):
 
 def stationary_distribution(pi_0, tmatrix, epsilon, verbose=True):
     """
+    Returns the stationary distribution of the Markov chain.
+
+    Parameters
+    ----------
+    pi_O: numpy.array
+        The initial distribution.
+    tmatrix : numpy.ndarray
+        The transition matrix.
+    epsilon : float
+         The convergence threshold.
+
+    Returns
+    -------
+    numpy.array
+        the stationary distribution.
     """
     pi_k = pi_0
     k = 0
@@ -593,6 +677,23 @@ def p_empirique_dinucleotides(length, n, counts, k, word, freqs, nb_simulation=1
     return nb_observed
 
 def geq_poisson_probability(n, mu):
+    """
+    Calculates the probability P(N >= n), where N is a Poisson random variable.
+
+    Parameters
+    ----------
+    n : int
+        The observed number of occurrences of a word.
+    mu : float
+        Poisson distribution parameter.
+    Returns
+    -------
+    float
+        the probability P(N >= n).
+    See Also
+    -------
+    poisson.cdf : Cumulative distribution function.
+    """
     return 1 - poisson.cdf(n, mu=mu)
 
 
