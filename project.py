@@ -305,7 +305,7 @@ def compare_simulations(length, freqs, ks, num_seq=1000):
         expected[k] = list(np.mean(exp, axis = 0))
     return observed, expected
 
-def p_empirique(length, word, freqs, nb_simulation=1000):
+def p_empirique(length, n_gram, freqs, nb_simulation=1000):
     """
     Parameters
     ----------
@@ -316,12 +316,12 @@ def p_empirique(length, word, freqs, nb_simulation=1000):
     """
 
     nb_observed ={}
-    word_ = tuple(str_to_int(word))
+    word = tuple(str_to_int(n_gram))
     for _ in range(nb_simulation):
-        dict = k_grams_occurrences(simule_sequence(length,freqs),len(word_))
+        dict = k_grams_occurrences(simule_sequence(length, freqs), len(word))
         nb = 0
-        if(word_ in dict.keys()):
-             nb = dict[word_]
+        if(word in dict.keys()):
+             nb = dict[word]
         if nb in nb_observed:
             nb_observed[nb] +=1
         else:
@@ -329,10 +329,13 @@ def p_empirique(length, word, freqs, nb_simulation=1000):
     sorted_obs = {k: v for k, v in sorted(nb_observed.items())}
 
     keys = list(sorted_obs.keys())
-    values = np.cumsum(list(sorted_obs.values()))
-    return (keys, 1-(values/nb_simulation))
+    max_occu = keys[-1] + 1
+    values = np.zeros(max_occu + 1)
+    values[keys] = list(sorted_obs.values())
+    values = np.cumsum(values[::-1])[::-1] / nb_simulation
+    return values
 
-def plot_histogram(sequence,freqs, nb_simulation=1000):
+def plot_histogram(sequence, freqs, nb_simulation=1000):
     """
 
     Parameters
@@ -342,33 +345,49 @@ def plot_histogram(sequence,freqs, nb_simulation=1000):
     -------
 
     """
+    fig, axes = plt.subplots(2, 2, figsize=(15, 15))
     p_emp = {}
     p = {}
     words = ["ATCTGC", "ATATAT", "AAAAAA", "TTTAAA"]
     positions = [(0,0), (0,1), (1,0), (1,1)]
-     # Paramètre de la loi de Poisson
-    pik = stationary_distribution(freqs, transition_matrix(sequence), 0.00001)
+
+    # Distribution stationnaire de la chaîne de Markov associée
+    pi_k = stationary_distribution(freqs, transition_matrix(sequence), 0.00001, verbose=False)
+
     for word in words:
         p_emp[word] = p_empirique(len(sequence), word, freqs, nb_simulation)
-        p[word] = markov_proba(str_to_int(word),transition_matrix(sequence),pik)
-    fig, axes = plt.subplots(2, 2, figsize=(15, 15))
+        p[word] = markov_proba(str_to_int(word), transition_matrix(sequence), pi_k)
+
     for pos, word in zip(positions, p_emp.keys()):
-        max_ = max(p_emp[word][0]) + 1
-        k = np.arange(max_)
-        l = p[word] * (len(sequence) - len(word) + 1)
-        keys = p_emp[word][0]
-        values = p_emp[word][1]
-        print(values)
-        print(keys)
-        poiss = 1 - poisson.cdf(k,l)
-        axes[pos].scatter(k,poiss, zorder = 2)
-        axes[pos].bar(keys, values)
+        ks = np.arange(len(p_emp[word]))
+        # Paramètre de la loi de Poisson
+        mu = p[word] * (len(sequence) - len(word) + 1)
+        axes[pos].scatter(ks, geq_poisson_probability(ks, mu), zorder = 2)
+        axes[pos].bar(ks, p_emp[word])
         axes[pos].grid(True)
         axes[pos].set_title("Distribution des occurrences de " + word)
         axes[pos].set_xlabel("Occurrences du mot")
         axes[pos].set_ylabel("Probabilité empirique estimée")
+        axes[pos].legend(['Loi de Poisson', 'Distribution empirique'])
         extent = axes[pos].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         fig.savefig("plots/histogram_" + word + ".png", bbox_inches=extent.expanded(1.1, 1.2))
+
+def plot_scatter(files, ks):
+    chromos_list = []
+    fig, axes = plt.subplots(len(ks), len(files), figsize=(15, 15))
+    plt.subplots_adjust(hspace=0.45, wspace=0.35)
+    for i in range(len(files)):
+        _, chromos, _, freqs = ut.read_file(files[i])
+        chromos_list += chromos
+        for ind_k, k in enumerate(ks):
+            obs = k_grams_occurrences(chromos, k)
+            exp = comptage_attendu(k, len(chromos), freqs)
+            observed, expected = ut.encode_file(chromos, k, freqs, obs, exp)
+            ut.plot(xs=observed, ys=expected, xlabel="Nombre observé", \
+                    ylabel="Nombre attendu", \
+                    title="Fichier: " + files[i][10:] + ", k = " + str(k), \
+                    ax=axes[ind_k, i])
+    return chromos_list
 
 def count_bigram(sequence, first, second):
     """
@@ -486,7 +505,7 @@ def comptage_attendu_markov(k, length, tmatrix, pi):
         dico[n_g] = number_n_grams * markov_proba(n_g, tmatrix, pi)
     return dico
 
-def stationary_distribution(pi_0, tmatrix, epsilon):
+def stationary_distribution(pi_0, tmatrix, epsilon, verbose=True):
     """
     """
     pi_k = pi_0
@@ -495,7 +514,8 @@ def stationary_distribution(pi_0, tmatrix, epsilon):
         k += 1
         pi_kp1 = np.dot(pi_k, tmatrix)
         if np.abs(pi_kp1 - pi_k).sum() < epsilon:
-            print("Convergence after", k, "iterations")
+            if verbose is True:
+                print("Convergence after", k, "iterations")
             return pi_kp1
         pi_k = pi_kp1
 
