@@ -358,8 +358,6 @@ def plot_histogram(sequence,freqs, nb_simulation=1000):
         l = p[word] * (len(sequence) - len(word) + 1)
         keys = p_emp[word][0]
         values = p_emp[word][1]
-        print(values)
-        print(keys)
         poiss = 1 - poisson.cdf(k,l)
         axes[pos].scatter(k,poiss, zorder = 2)
         axes[pos].bar(keys, values)
@@ -495,7 +493,6 @@ def stationary_distribution(pi_0, tmatrix, epsilon):
         k += 1
         pi_kp1 = np.dot(pi_k, tmatrix)
         if np.abs(pi_kp1 - pi_k).sum() < epsilon:
-            print("Convergence after", k, "iterations")
             return pi_kp1
         pi_k = pi_kp1
 
@@ -515,9 +512,21 @@ def p_empirique_dinucleotides(length, n, counts, k, word, freqs, nb_simulation=1
     return nb_observed
 
 def geq_poisson_probability(n, mu):
-    return 1 - poisson.cdf(n, mu=mu)
+    return 1 - poisson.cdf(n-1, mu=mu)
 
 
 def gap_probabilities(length, k, counts, probas):
     nb_pos = length - k + 1
     return [geq_poisson_probability(n, nb_pos*p) for n, p in zip(counts, probas)]
+
+def unexpected_words(sequence,freqs,k,seuil):
+    occ = k_grams_occurrences(sequence,k)
+    nb_pos = len(sequence)- k + 1
+    pik = stationary_distribution(freqs, transition_matrix(sequence), 0.00001)
+    words = []
+    for w in occ.keys():
+        p = markov_proba(w,transition_matrix(sequence),pik)
+        proba = geq_poisson_probability(occ[w],p*nb_pos)
+        if proba < seuil:
+            words.append(int_to_str(w))
+            print("word: "+int_to_str(w)+"\t\tOccurrences: "+str(occ[w])+"\t\tP(N >= {:d}) = {:.4f}".format(occ[w], proba), sep="")
