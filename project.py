@@ -1,17 +1,22 @@
+import math
 from functools import reduce
 from itertools import product
-import math
-from scipy.stats import poisson
+from operator import mul
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+from scipy.stats import poisson
+
 import utils as ut
-from operator import mul
+
 inv_nucleotide = {v: k for k, v in ut.nucleotide.items()}
 nucleobases = [k for k in inv_nucleotide]
 
-d={'k':1,'f':2, 'j':4,'g':9}
+d = {'k': 1, 'f': 2, 'j': 4, 'g': 9}
 len(d)
+
+
 def logproba(sequence, probas):
     """Returns the log-probability of an integer sequence.
 
@@ -172,8 +177,8 @@ def k_grams_occurrences(sequence, k):
 
     """
     k_grams = all_k_grams(k)
-    counts = {tuple(k) : 0 for k in k_grams}
-    for i in range(len(sequence)-k+1):
+    counts = {tuple(k): 0 for k in k_grams}
+    for i in range(len(sequence) - k + 1):
         try:
             counts[tuple(sequence[i:i + k])] += 1
         except Exception:
@@ -199,6 +204,7 @@ def all_k_grams(k, alph=nucleobases):
     """
     return list(product(alph, repeat=k))
 
+
 def nucleotides_proba(sequence, frequencies):
     """Returns the probability of occurrence of a word in a sequence based on the nucleotide model.
 
@@ -215,6 +221,7 @@ def nucleotides_proba(sequence, frequencies):
 
     """
     return reduce(lambda x, y: x * y, [frequencies[nb] for nb in sequence])
+
 
 def comptage_attendu(k, length, frequences):
     """Returns the expected number of occurrences of the different k-grams given the frequencies of letters in the DNA sequence
@@ -282,15 +289,16 @@ def compare_simulations(length, freqs, ks, num_seq=1000):
     observed = {k: None for k in ks}
     expected = {k: None for k in ks}
     for k in ks:
-        exp = np.zeros((num_seq,len(comptage_attendu(k,length,freqs))))
+        exp = np.zeros((num_seq, len(comptage_attendu(k, length, freqs))))
         obs = np.zeros_like(exp)
         for i in range(num_seq):
             sequence = simule_sequence(length, freqs)
-            obs[i] = list(k_grams_occurrences(sequence,k).values())
-            exp[i] = list(comptage_attendu(k,len(sequence),freqs).values())
-        observed[k] = list(np.mean(obs, axis = 0))
-        expected[k] = list(np.mean(exp, axis = 0))
+            obs[i] = list(k_grams_occurrences(sequence, k).values())
+            exp[i] = list(comptage_attendu(k, len(sequence), freqs).values())
+        observed[k] = list(np.mean(obs, axis=0))
+        expected[k] = list(np.mean(exp, axis=0))
     return observed, expected
+
 
 def p_empirique(length, n_gram, freqs, nb_simulation=1000):
     """
@@ -310,15 +318,15 @@ def p_empirique(length, n_gram, freqs, nb_simulation=1000):
 
     """
 
-    nb_observed ={}
+    nb_observed = {}
     word = tuple(str_to_int(n_gram))
     for _ in range(nb_simulation):
         dict = k_grams_occurrences(simule_sequence(length, freqs), len(word))
         nb = 0
         if(word in dict.keys()):
-             nb = dict[word]
+            nb = dict[word]
         if nb in nb_observed:
-            nb_observed[nb] +=1
+            nb_observed[nb] += 1
         else:
             nb_observed[nb] = 1
     sorted_obs = {k: v for k, v in sorted(nb_observed.items())}
@@ -330,7 +338,8 @@ def p_empirique(length, n_gram, freqs, nb_simulation=1000):
     values = np.cumsum(values[::-1])[::-1] / nb_simulation
     return values
 
-def plot_histogram(sequence, freqs, nb_simulation=1000, estimate=False):
+
+def plot_histogram(sequence, freqs, nb_simulation=1000, expected=False):
     """
     Plots the word count distribution histogram of each word in a given sequence.
 
@@ -354,15 +363,17 @@ def plot_histogram(sequence, freqs, nb_simulation=1000, estimate=False):
     p_dint = {}
     p_nt = {}
     words = ["ATCTGC", "ATATAT", "AAAAAA", "TTTAAA"]
-    positions = [(0,0), (0,1), (1,0), (1,1)]
+    positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
 
     # Distribution stationnaire de la chaîne de Markov associée
-    pi_k = stationary_distribution(freqs, transition_matrix(sequence), 0.00001, verbose=False)
+    pi_k = stationary_distribution(
+        freqs, transition_matrix(sequence), 0.00001, verbose=False)
 
     for word in words:
         p_emp[word] = p_empirique(len(sequence), word, freqs, nb_simulation)
         if expected is True:
-            p_dint[word] = dinucleotides_proba(str_to_int(word), transition_matrix(sequence), pi_k)
+            p_dint[word] = dinucleotides_proba(
+                str_to_int(word), transition_matrix(sequence), pi_k)
             p_nt[word] = nucleotides_proba(str_to_int(word), freqs)
 
     for pos, word in zip(positions, p_emp.keys()):
@@ -377,13 +388,17 @@ def plot_histogram(sequence, freqs, nb_simulation=1000, estimate=False):
             # Paramètre de la loi de Poisson
             mu_dint = p_dint[word] * (len(sequence) - len(word) + 1)
             mu_nt = p_nt[word] * (len(sequence) - len(word) + 1)
-            axes[pos].scatter(ks, geq_poisson_probability(ks, mu_dint), zorder=2)
+            axes[pos].scatter(
+                ks, geq_poisson_probability(ks, mu_dint), zorder=2)
             axes[pos].scatter(ks, geq_poisson_probability(ks, mu_nt), zorder=3)
-            axes[pos].legend(['Loi de Poisson (dinucléotides)', \
-            'Loi de Poisson (nucléotides)', 'Distribution empirique'])
+            axes[pos].legend(['Loi de Poisson (dinucléotides)',
+                              'Loi de Poisson (nucléotides)', 'Distribution empirique'])
 
-        extent = axes[pos].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-        fig.savefig("plots/histogram_" + word + ".png", bbox_inches=extent.expanded(1.1, 1.2))
+        extent = axes[pos].get_window_extent().transformed(
+            fig.dpi_scale_trans.inverted())
+        fig.savefig("plots/histogram_" + word + ".png",
+                    bbox_inches=extent.expanded(1.1, 1.2))
+
 
 def plot_scatter(files, ks):
     """
@@ -410,11 +425,12 @@ def plot_scatter(files, ks):
             obs = k_grams_occurrences(chromos, k)
             exp = comptage_attendu(k, len(chromos), freqs)
             observed, expected = ut.encode_file(obs, exp)
-            ut.plot(xs=observed, ys=expected, xlabel="Nombre observé", \
-                    ylabel="Nombre attendu", \
-                    title="Fichier: " + files[i][10:] + ", k = " + str(k), \
+            ut.plot(xs=observed, ys=expected, xlabel="Nombre observé",
+                    ylabel="Nombre attendu",
+                    title="Fichier: " + files[i][10:] + ", k = " + str(k),
                     ax=axes[ind_k, i])
     return chromos_list
+
 
 def distance_counts(xs, ys):
     """Compute the distance between the expected number of occurrences and the observed one.
@@ -456,7 +472,7 @@ def plot_counts(sequence, freqs):
     """
     fig, axes = plt.subplots(2, 2, figsize=(15, 15))
     ks = [2, 4, 6, 8]
-    positions = [(0,0), (0,1), (1,0), (1,1)]
+    positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
 
     length = len(sequence)
     # Matrice de transition de la chaîne de Markov associée
@@ -489,14 +505,16 @@ def plot_counts(sequence, freqs):
         print("Modèle\t\t|\tSomme des carrés\t|\tEcart type")
         print("------------------------------------------------------------------------")
         print("Nucléotides\t|\t", round(mse_nt, 4), "\t\t|\t", round(std_nt, 4))
-        print("Dinucléotides\t|\t", round(mse_dint, 4), "\t\t|\t", round(std_dint, 4))
+        print("Dinucléotides\t|\t", round(mse_dint, 4),
+              "\t\t|\t", round(std_dint, 4))
 
         # Paramètre de la loi de Poisson
         axes[pos].scatter(xs, obs, zorder=1)
         axes[pos].scatter(xs, nt, zorder=2)
         axes[pos].scatter(xs, dint, zorder=3)
-        axes[pos].legend(['Observations', 'Modèle de nucléotides', \
-        'Modèle de dinucléotides'])
+        axes[pos].legend(['Observations', 'Modèle de nucléotides',
+                          'Modèle de dinucléotides'])
+
 
 def count_bigram(sequence, first, second):
     """
@@ -510,6 +528,7 @@ def count_bigram(sequence, first, second):
         the first letter of the bigram to be considered.
     second : char
         the second letter of the bigram to be considered.
+
     Returns
     -------
     int
@@ -534,8 +553,8 @@ def transition_matrix(sequence):
 
     Parameters
     ----------
-    sequence : str
-        The DNA sequence to be analysed.
+    sequence : list of int
+        An integer-converted DNA sequence.
 
     Returns
     -------
@@ -544,7 +563,7 @@ def transition_matrix(sequence):
 
     """
     tmatrix = np.array([[count_bigram(sequence, fst, snd) for snd in nucleobases]
-                       for fst in nucleobases])
+                        for fst in nucleobases])
     return tmatrix / tmatrix.sum(axis=1).reshape(-1, 1)
 
 
@@ -554,12 +573,13 @@ def simule_sequence_markov(length, prop, sequence):
 
     Parameters
     ----------
-    sequence : str
-        The DNA sequence to be analysed.
     length : int
         the length of the sequence to be simulated.
     prop : list of float
         the proportions of the different elements of the sequence.
+    sequence : list of int
+        The integer-converted DNA sequence to use for the transition matrix.
+
     Returns
     -------
     list of int
@@ -581,8 +601,8 @@ def dinucleotides_proba(sequence, tmatrix, pi_k):
 
     Parameters
     ----------
-    sequence : str
-        The word to be considered.
+    sequence : list of int
+        The integer-converted word to be considered.
     tmatrix: numpy.ndarray
         The transition matrix.
     pi_k: numpy.array
@@ -606,10 +626,10 @@ def comptage_attendu_markov(k, length, tmatrix, pi):
 
     Parameters
     ----------
-    pi: tuple of int
-        The distribution to use for the first nucleobase in the `k`-gram.
     k : int
         The length of the k-grams to be considered.
+    length: int
+        The number of nucleobases in the reference DNA sequence.
     tmatrix: numpy.ndarray
         The transition matrix.
     pi : numpy.array
@@ -632,6 +652,7 @@ def comptage_attendu_markov(k, length, tmatrix, pi):
         dico[n_g] = number_n_grams * dinucleotides_proba(n_g, tmatrix, pi)
     return dico
 
+
 def stationary_distribution(pi_0, tmatrix, epsilon, verbose=True):
     """
     Returns the stationary distribution of the Markov chain.
@@ -643,7 +664,9 @@ def stationary_distribution(pi_0, tmatrix, epsilon, verbose=True):
     tmatrix : numpy.ndarray
         The transition matrix.
     epsilon : float
-         The convergence threshold.
+        The convergence threshold.
+    verbose : bool, optional
+        Used to decide whether to print a message about convergence.
 
     Returns
     -------
@@ -661,20 +684,6 @@ def stationary_distribution(pi_0, tmatrix, epsilon, verbose=True):
             return pi_kp1
         pi_k = pi_kp1
 
-def p_empirique_dinucleotides(length, n, counts, k, word, freqs, nb_simulation=1000):
-    """
-    Parameters
-    ----------
-
-    Returns
-    -------
-
-    """
-    nb_observed = 0
-    for _ in range(nb_simulation):
-        dict = k_grams_occurrences(simule_sequence(length,freqs),len(word))
-        if(word in dict.keys() and dict[word] >= n ): nb_observed +=1
-    return nb_observed
 
 def geq_poisson_probability(n, mu):
     """
@@ -697,13 +706,9 @@ def geq_poisson_probability(n, mu):
     return 1 - poisson.cdf(n, mu=mu)
 
 
-def gap_probabilities(length, k, counts, probas):
-    nb_pos = length - k + 1
-    return [geq_poisson_probability(n, nb_pos*p) for n, p in zip(counts, probas)]
-
 def unexpected_words(sequence, freqs, k, seuil):
     dico = k_grams_occurrences(sequence, k)
-    nb_pos = len(sequence)- k + 1
+    nb_pos = len(sequence) - k + 1
     tmatrix = transition_matrix(sequence)
     pi_k = stationary_distribution(freqs, tmatrix, 0.00001)
     words = []
@@ -712,22 +717,50 @@ def unexpected_words(sequence, freqs, k, seuil):
         proba = geq_poisson_probability(occ, p * nb_pos)
         if proba < seuil:
             words.append(int_to_str(w))
-            print("word: " + int_to_str(w) + "\t\tOccurrences: " + \
-            str(occ) + "\t\tP(N >= {:d}) = {:.4f}".format(occ, proba), sep="")
+            print("word: " + int_to_str(w) + "\t\tOccurrences: " +
+                  str(occ) + "\t\tP(N >= {:d}) = {:.4f}".format(occ, proba), sep="")
+
 
 def sort_unexpected_words(sequence, frequencies, ks, threshold):
+    """Finds the most unexpected words according to both the nucleotides and
+    dinucleotides models.
+
+    Parameters
+    ----------
+    sequence : list of int
+        The integer-converted DNA sequence to be analysed.
+    frequencies : list of float
+        The proportion of the considered nucleobases.
+    ks : list of int
+        The n-gram lengths to be analysed.
+    threshold : float
+        The maximum probability for unexpected words.
+
+    Returns
+    -------
+    nt_res : list of list of (str, float))
+        The most unexpected words for each n-gram length based on the nucleotides
+        model.
+    dint_res : list of list of (str, float))
+        The most unexpected words for each n-gram length based on the dinucleotides
+        model.
+
+    """
     tmatrix = transition_matrix(sequence)
-    pi_k = stationary_distribution(frequencies, tmatrix, 0.00001, verbose=False)
-    nt_proba = lambda word: nucleotides_proba(word, frequencies)
-    dint_proba = lambda word: dinucleotides_proba(word, tmatrix, pi_k)
+    pi_k = stationary_distribution(
+        frequencies, tmatrix, 0.00001, verbose=False)
+
+    def nt_proba(word): return nucleotides_proba(word, frequencies)
+    def dint_proba(word): return dinucleotides_proba(word, tmatrix, pi_k)
     nt_res, dint_res = [], []
     for proba, res in zip([nt_proba, dint_proba], [nt_res, dint_res]):
         for k in ks:
             nb_pos = len(sequence) - k + 1
             dico = k_grams_occurrences(sequence, k)
-            word_proba = [(w, geq_poisson_probability(o, proba(w)*nb_pos)) \
-                            for w, o in dico.items()]
+            word_proba = [(w, geq_poisson_probability(o, proba(w) * nb_pos))
+                          for w, o in dico.items()]
             word_proba.sort(key=lambda x: x[1])
-            words = [(int_to_str(w), p) for w, p in word_proba if p < threshold]
+            words = [(int_to_str(w), p)
+                     for w, p in word_proba if p < threshold]
             res.append(words)
     return nt_res, dint_res
