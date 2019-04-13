@@ -80,7 +80,7 @@ def plot(xs, ys, xlabel, ylabel, title, ax=None):
     ax.plot([min_v, max_v], [min_v, max_v], color="red", zorder=2)
     ax.set_title(title)
 
-def encode_file(sequence, k, probas, obs, exp):
+def encode_file(obs, exp):
     observed = [obs[k] for k in obs.keys()]
     expected = [exp[k] for k in exp.keys()]
     return observed, expected

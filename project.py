@@ -178,9 +178,7 @@ def k_grams_occurrences(sequence, k):
             counts[tuple(sequence[i:i + k])] += 1
         except Exception:
             pass
-    # key = lambda item: item[0]
-    sorted_dict = {k: v for k, v in sorted(counts.items())}
-    return sorted_dict
+    return counts
 
 
 def all_k_grams(k, alph=nucleobases):
@@ -246,31 +244,6 @@ def simule_sequence(length, props):
     liste = [np.full((int(round(length * p))), k) for k, p in enumerate(props)]
     flattened = np.hstack(liste)
     return np.random.permutation(flattened)
-
-
-def distance_counts(expected, observed):
-    """Compute the distance between the expected number of occurrences and the observed one.
-
-    Parameters
-    ----------
-    expected : numpy.array
-        the expected number of occurrences of the different elements of the sequence.
-    observed : numpy.array
-        the expected number of occurrences of the different elements of the sequence.
-    Returns
-    -------
-    float
-        the norm of the array (expected - observed).
-
-    """
-    dists = []
-    for k, exp in expected.items():
-        try:
-            obs = observed[k]
-        except Exception:
-            obs = 0.
-        dists.append(exp - obs)
-    return np.linalg.norm(dists)
 
 
 def compare_simulations(length, freqs, ks, num_seq=1000):
@@ -358,7 +331,7 @@ def plot_histogram(sequence, freqs, nb_simulation=1000, expected=False):
 
     for word in words:
         p_emp[word] = p_empirique(len(sequence), word, freqs, nb_simulation)
-        if estimate is True:
+        if expected is True:
             p_dint[word] = dinucleotides_proba(str_to_int(word), transition_matrix(sequence), pi_k)
             p_nt[word] = nucleotides_proba(str_to_int(word), freqs)
 
@@ -370,7 +343,7 @@ def plot_histogram(sequence, freqs, nb_simulation=1000, expected=False):
         axes[pos].set_ylabel("Probabilité empirique estimée")
         axes[pos].bar(ks, p_emp[word])
 
-        if estimate is True:
+        if expected is True:
             # Paramètre de la loi de Poisson
             mu_dint = p_dint[word] * (len(sequence) - len(word) + 1)
             mu_nt = p_nt[word] * (len(sequence) - len(word) + 1)
@@ -392,12 +365,87 @@ def plot_scatter(files, ks):
         for ind_k, k in enumerate(ks):
             obs = k_grams_occurrences(chromos, k)
             exp = comptage_attendu(k, len(chromos), freqs)
-            observed, expected = ut.encode_file(chromos, k, freqs, obs, exp)
+            observed, expected = ut.encode_file(obs, exp)
             ut.plot(xs=observed, ys=expected, xlabel="Nombre observé", \
                     ylabel="Nombre attendu", \
                     title="Fichier: " + files[i][10:] + ", k = " + str(k), \
                     ax=axes[ind_k, i])
     return chromos_list
+
+def distance_counts(xs, ys):
+    """Compute the distance between the expected number of occurrences and the observed one.
+
+    Parameters
+    ----------
+    expected : numpy.array
+        the expected number of occurrences of the different elements of the sequence.
+    observed : numpy.array
+        the expected number of occurrences of the different elements of the sequence.
+    Returns
+    -------
+    float
+        the norm of the array (expected - observed).
+
+    """
+    dists = []
+    for x, y in zip(xs, ys):
+        dists.append(x - y)
+    return np.linalg.norm(dists), np.std(np.abs(dists), ddof=1)
+
+
+def plot_counts(sequence, freqs):
+    """
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(15, 15))
+    ks = [2, 4, 6, 8]
+    positions = [(0,0), (0,1), (1,0), (1,1)]
+
+    length = len(sequence)
+    # Matrice de transition de la chaîne de Markov associée
+    tmatrix = transition_matrix(sequence)
+    # Distribution stationnaire de la chaîne de Markov associée
+    pi_k = stationary_distribution(freqs, tmatrix, 0.00001, verbose=False)
+
+    print("Méthode des moindres carrés des distances à l'observation")
+    print("=========================================================")
+
+    for pos, k in zip(positions, ks):
+        # axes[pos].grid(True)
+        axes[pos].set_title("Longueur des mots : k = " + str(k))
+        axes[pos].set_xlabel("Indice lexicographique du mot")
+        axes[pos].set_ylabel("Comptage attendu")
+
+        nt_counts = comptage_attendu(k, length, freqs)
+        dint_counts = comptage_attendu_markov(k, length, tmatrix, pi_k)
+        obs_counts = k_grams_occurrences(sequence, k)
+
+        nt, dint = ut.encode_file(nt_counts, dint_counts)
+        obs = list(obs_counts.values())
+        xs = np.arange(len(nt_counts))
+
+        mse_nt, std_nt = distance_counts(obs, nt)
+        mse_dint, std_dint = distance_counts(obs, dint)
+
+        print("\nPour k =", k, ":")
+        print("============")
+        print("Modèle\t\t|\tSomme des carrés\t|\tEcart type")
+        print("------------------------------------------------------------------------")
+        print("Nucléotides\t|\t", round(mse_nt, 4), "\t\t|\t", round(std_nt, 4))
+        print("Dinucléotides\t|\t", round(mse_dint, 4), "\t\t|\t", round(std_dint, 4))
+
+        # Paramètre de la loi de Poisson
+        axes[pos].scatter(xs, obs, zorder=1)
+        axes[pos].scatter(xs, nt, zorder=2)
+        axes[pos].scatter(xs, dint, zorder=3)
+        axes[pos].legend(['Observations', 'Modèle de nucléotides', \
+        'Modèle de dinucléotides'])
 
 def count_bigram(sequence, first, second):
     """
