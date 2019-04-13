@@ -201,6 +201,8 @@ def all_k_grams(k, alph=nucleobases):
     """
     return list(product(alph, repeat=k))
 
+def nucleotides_proba(sequence, frequencies):
+    return reduce(lambda x, y: x * y, [frequencies[nb] for nb in sequence])
 
 def comptage_attendu(k, length, frequences):
     """Returns the expected number of occurrences of the different k-grams given the frequencies of letters in the DNA sequence
@@ -223,8 +225,7 @@ def comptage_attendu(k, length, frequences):
     number_n_grams = length - k + 1
     dico = {}
     for n_g in n_grams:
-        dico[n_g] = reduce(lambda x, y: x * y, [frequences[i] for i in n_g],
-                           number_n_grams)
+        dico[n_g] = nucleotides_proba(n_g, frequences) * number_n_grams
     return dico
 
 
@@ -335,7 +336,7 @@ def p_empirique(length, n_gram, freqs, nb_simulation=1000):
     values = np.cumsum(values[::-1])[::-1] / nb_simulation
     return values
 
-def plot_histogram(sequence, freqs, nb_simulation=1000):
+def plot_histogram(sequence, freqs, nb_simulation=1000, expected=False):
     """
 
     Parameters
@@ -347,7 +348,8 @@ def plot_histogram(sequence, freqs, nb_simulation=1000):
     """
     fig, axes = plt.subplots(2, 2, figsize=(15, 15))
     p_emp = {}
-    p = {}
+    p_dint = {}
+    p_nt = {}
     words = ["ATCTGC", "ATATAT", "AAAAAA", "TTTAAA"]
     positions = [(0,0), (0,1), (1,0), (1,1)]
 
@@ -356,19 +358,27 @@ def plot_histogram(sequence, freqs, nb_simulation=1000):
 
     for word in words:
         p_emp[word] = p_empirique(len(sequence), word, freqs, nb_simulation)
-        p[word] = markov_proba(str_to_int(word), transition_matrix(sequence), pi_k)
+        if estimate is True:
+            p_dint[word] = dinucleotides_proba(str_to_int(word), transition_matrix(sequence), pi_k)
+            p_nt[word] = nucleotides_proba(str_to_int(word), freqs)
 
     for pos, word in zip(positions, p_emp.keys()):
         ks = np.arange(len(p_emp[word]))
-        # Paramètre de la loi de Poisson
-        mu = p[word] * (len(sequence) - len(word) + 1)
-        axes[pos].scatter(ks, geq_poisson_probability(ks, mu), zorder = 2)
-        axes[pos].bar(ks, p_emp[word])
         axes[pos].grid(True)
         axes[pos].set_title("Distribution des occurrences de " + word)
         axes[pos].set_xlabel("Occurrences du mot")
         axes[pos].set_ylabel("Probabilité empirique estimée")
-        axes[pos].legend(['Loi de Poisson', 'Distribution empirique'])
+        axes[pos].bar(ks, p_emp[word])
+
+        if estimate is True:
+            # Paramètre de la loi de Poisson
+            mu_dint = p_dint[word] * (len(sequence) - len(word) + 1)
+            mu_nt = p_nt[word] * (len(sequence) - len(word) + 1)
+            axes[pos].scatter(ks, geq_poisson_probability(ks, mu_dint), zorder=2)
+            axes[pos].scatter(ks, geq_poisson_probability(ks, mu_nt), zorder=3)
+            axes[pos].legend(['Loi de Poisson (dinucléotides)', \
+            'Loi de Poisson (nucléotides)', 'Distribution empirique'])
+
         extent = axes[pos].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         fig.savefig("plots/histogram_" + word + ".png", bbox_inches=extent.expanded(1.1, 1.2))
 
@@ -465,7 +475,7 @@ def simule_sequence_markov(length, prop, sequence):
     return seq
 
 
-def markov_proba(sequence, tmatrix, pi_k):
+def dinucleotides_proba(sequence, tmatrix, pi_k):
     """
 
     Parameters
@@ -502,7 +512,7 @@ def comptage_attendu_markov(k, length, tmatrix, pi):
     number_n_grams = length - k + 1
     dico = {}
     for n_g in n_grams:
-        dico[n_g] = number_n_grams * markov_proba(n_g, tmatrix, pi)
+        dico[n_g] = number_n_grams * dinucleotides_proba(n_g, tmatrix, pi)
     return dico
 
 def stationary_distribution(pi_0, tmatrix, epsilon, verbose=True):
@@ -548,7 +558,7 @@ def unexpected_words(sequence,freqs,k,seuil):
     pik = stationary_distribution(freqs, transition_matrix(sequence), 0.00001)
     words = []
     for w in occ.keys():
-        p = markov_proba(w,transition_matrix(sequence),pik)
+        p = dinucleotides_proba(w,transition_matrix(sequence),pik)
         proba = geq_poisson_probability(occ[w],p*nb_pos)
         if proba < seuil:
             words.append(int_to_str(w))
